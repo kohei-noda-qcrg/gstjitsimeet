@@ -34,6 +34,13 @@ executable('receiver-example', files(
   dependencies : [gstreamer_dep],
 ) 
 
+executable('opus-only-bridge', files(
+    'src/gstutil/pipeline-helper.cpp',
+    'src/examples/opus-only-bridge.cpp',
+  ),
+  dependencies : [gstreamer_dep],
+) 
+
 executable('room-to-room-example', files(
     'src/gstutil/pipeline-helper.cpp',
     'src/examples/room-to-room.cpp',
