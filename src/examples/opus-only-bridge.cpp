@@ -121,7 +121,7 @@ auto main(const int argc, const char* const* argv) -> int {
     };
 
     /*
-     * udpsrc -> jtpjitterbuffer -> rtpopusdepay -> jitsibin
+     * udpsrc -> rtpjitterbuffer -> rtpopusdepay -> opusdec -> audioconvert -> audioresample -> queue -> opusenc -> jitsibin
      */
     unwrap_mut(udpsrc, add_new_element_to_pipeine(pipeline.get(), "udpsrc"));
     g_object_set(&udpsrc,
@@ -135,6 +135,15 @@ auto main(const int argc, const char* const* argv) -> int {
                  "drop-on-latency", TRUE,
                  NULL);
     unwrap_mut(rtpopusdepay, add_new_element_to_pipeine(pipeline.get(), "rtpopusdepay"));
+
+    unwrap_mut(opusdec, add_new_element_to_pipeine(pipeline.get(), "opusdec"));
+    unwrap_mut(audioconvert, add_new_element_to_pipeine(pipeline.get(), "audioconvert"));
+    unwrap_mut(audioresample, add_new_element_to_pipeine(pipeline.get(), "audioresample"));
+    unwrap_mut(queue, add_new_element_to_pipeine(pipeline.get(), "queue"));
+    unwrap_mut(opusenc, add_new_element_to_pipeine(pipeline.get(), "opusenc"));
+    g_object_set(G_OBJECT(&opusenc),
+                 "perfect-timestamp", TRUE,
+                 NULL);
 
     unwrap_mut(jitsibin, add_new_element_to_pipeine(pipeline.get(), "jitsibin"));
     g_signal_connect(&jitsibin, "pad-added", G_CALLBACK(jitsibin_pad_added_handler), &context);
@@ -155,7 +164,12 @@ auto main(const int argc, const char* const* argv) -> int {
 
     ensure(gst_element_link_pads(&udpsrc, NULL, &rtpjitterbuffer, NULL) == TRUE);
     ensure(gst_element_link_pads(&rtpjitterbuffer, NULL, &rtpopusdepay, NULL) == TRUE);
-    ensure(gst_element_link_pads(&rtpopusdepay, NULL, &jitsibin, "audio_sink") == TRUE);
+    ensure(gst_element_link_pads(&rtpopusdepay, NULL, &opusdec, NULL) == TRUE);
+    ensure(gst_element_link_pads(&opusdec, NULL, &audioconvert, NULL) == TRUE);
+    ensure(gst_element_link_pads(&audioconvert, NULL, &audioresample, NULL) == TRUE);
+    ensure(gst_element_link_pads(&audioresample, NULL, &queue, NULL) == TRUE);
+    ensure(gst_element_link_pads(&queue, NULL, &opusenc, NULL) == TRUE);
+    ensure(gst_element_link_pads(&opusenc, NULL, &jitsibin, "audio_sink") == TRUE);
 
     ensure(run_pipeline(pipeline.get()));
 
